@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+   <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
+  <meta charset="utf-8">
+  <title>Functional references: Lens and other Optics in Scala</title>
+
+  <!-- CSS  -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="assets/css/materialize.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+  <link href="assets/css/style.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+  <link rel="stylesheet" href="assets/font-awesome/css/font-awesome.min.css">
+
+  <!-- Code highlighting -->
+  <link rel="stylesheet" href="/assets/highlight/styles/rainbow.css">
+  <script src="/assets/highlight/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+</head>
+
+  <body>
+    <nav class="yellow lighten-3" role="navigation">
+  <div class="nav-wrapper container"><a id="logo-container" href="/" class="brand-logo grey-text text-darken-3">Dorian Davì</a>
+    <ul class="right hide-on-med-and-down">
+      <li><a href="/" class="grey-text text-darken-3">Home</a></li>
+      <li><a href="/blog.html" class="grey-text text-darken-3">Blog</a></li>
+      <li><a href="/about.html" class="grey-text text-darken-3">About</a></li>
+    </ul>
+
+    <ul id="nav-mobile" class="sidenav deep-purple darken-1">
+      <li><a href="/" class="white-text">Home</a></li>
+      <li><a href="/blog.html" class="white-text">Blog</a></li>
+      <li><a href="/about.html" class="white-text">About</a></li>
+    </ul>
+    <a href="#" data-target="nav-mobile" class="sidenav-trigger"><i class="material-icons grey-text text-darken-3">menu</i></a>
+  </div>
+</nav>
+
+    <div class="section no-pad-bot" id="index-banner">
+  <div class="container">
+    <br><br>
+    <h3 class="header center deep-purple-text text-darken-1">Functional references: Lens and other Optics in Scala</h3>
+    <p>12 Dec 2018</p>
+    <div class="row grey-text text-darken-3">
+    <p>Functional programming languages, like Scala, make it possible to ensure immutability and referential transparency. But how this two concepts cope with updating values inside an object?</p>
+
+<p><img class="responsive-img" src="/assets/img/2018/camera_on_piano.jpeg" /></p>
+
+<p>Let’s suppose we have to design a system to store addresses:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">class</span> <span class="nc">Street</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">number</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Address</span><span class="o">(</span><span class="n">country</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">city</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">street</span><span class="k">:</span> <span class="kt">Street</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p>and we want to access the number from the Address . If we were to implement this functionality in an imperative object oriented way we could, for example, make number a mutable parameter:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">class</span> <span class="nc">Street</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="k">var</span> <span class="n">number</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Address</span><span class="o">(</span><span class="n">country</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">city</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">street</span><span class="k">:</span> <span class="kt">Street</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">changeStreetNumber</span><span class="o">(</span><span class="n">int</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">.</span><span class="n">street</span><span class="o">.</span><span class="n">number</span> <span class="k">=</span> <span class="n">int</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>Scala though offers a function called copy to modify the parameters value inside a case class. This function doesn’t mutate the referred value, instead it creates a new object :</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">class</span> <span class="nc">Street</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">number</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Address</span><span class="o">(</span><span class="n">country</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">city</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">street</span><span class="k">:</span> <span class="kt">Street</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">changeStreetNumber</span><span class="o">(</span><span class="n">int</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Address</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span>
+    <span class="n">street</span> <span class="k">=</span> <span class="n">street</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span>
+      <span class="n">number</span> <span class="k">=</span> <span class="n">int</span>
+    <span class="o">)</span>
+  <span class="o">)</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>With a functional programming mindset we could then decide to separate the creation of the object from its functionality and move the changeStreetNumber function outside of the class scope:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">class</span> <span class="nc">Street</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">number</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Address</span><span class="o">(</span><span class="n">country</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">city</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">street</span><span class="k">:</span> <span class="kt">Street</span><span class="o">)</span>
+
+<span class="k">def</span> <span class="n">changeStreetNumber</span><span class="o">(</span><span class="n">address</span><span class="k">:</span> <span class="kt">Address</span><span class="o">,</span> <span class="n">int</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Address</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span>
+  <span class="n">street</span> <span class="k">=</span> <span class="n">address</span><span class="o">.</span><span class="n">street</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span>
+    <span class="n">number</span> <span class="k">=</span> <span class="n">int</span>
+  <span class="o">)</span>
+<span class="o">)</span>
+</code></pre></div></div>
+
+<p>But let’s suppose that we have to change a more deeply nested object:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">class</span> <span class="nc">Street</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">number</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Address</span><span class="o">(</span><span class="n">country</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">city</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">street</span><span class="k">:</span> <span class="kt">Street</span><span class="o">)</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">User</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span> <span class="n">address</span><span class="k">:</span> <span class="kt">Address</span><span class="o">)</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Account</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span> <span class="n">user</span><span class="k">:</span> <span class="kt">User</span><span class="o">,</span> <span class="n">isActive</span><span class="k">:</span> <span class="kt">Boolean</span><span class="o">)</span>
+
+<span class="k">def</span> <span class="n">changeStreetNumber</span><span class="o">(</span><span class="n">account</span><span class="k">:</span> <span class="kt">Account</span><span class="o">,</span>
+                       <span class="n">int</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Account</span> <span class="o">=</span>
+  <span class="n">account</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span>
+    <span class="n">user</span> <span class="k">=</span> <span class="n">account</span><span class="o">.</span><span class="n">user</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span>
+      <span class="n">address</span> <span class="k">=</span> <span class="n">account</span><span class="o">.</span><span class="n">user</span><span class="o">.</span><span class="n">address</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span>
+        <span class="n">street</span> <span class="k">=</span> <span class="n">account</span><span class="o">.</span><span class="n">user</span><span class="o">.</span><span class="n">address</span><span class="o">.</span><span class="n">street</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span>
+          <span class="n">number</span> <span class="k">=</span> <span class="n">int</span>
+        <span class="o">)</span>
+      <span class="o">)</span>
+    <span class="o">)</span>
+  <span class="o">)</span>
+</code></pre></div></div>
+
+<p>The greater the level of nesting of the objects, the less readable the syntax becomes.</p>
+
+<h2 id="introducing-lenses">Introducing Lenses</h2>
+
+<p>Let’s take a step backwards and have a look to what we’re trying to achieve here.</p>
+
+<p>A computer program that accesses data is said a reference. Using mutable variables we make implicit use of references. Indeed the reference cells can hold any value and are of reference type a ref, where a is to be replaced with the type of value pointed to. If the reference is mutable, it can be pointed to different objects. An example of mutable reference in imperative programming languages are pointers.</p>
+
+<p>In functional programming languages, in order to enforce immutability, other data structures are used in place of pointers — even if the compiler under the hood still uses them.</p>
+
+<p>As the School of Haskell points out:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>A lens is a first-class reference to a subpart of some data type.
+</code></pre></div></div>
+<p>We can define a Lens as follows:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">class</span> <span class="nc">Lens</span><span class="o">[</span><span class="kt">A</span>, <span class="kt">B</span><span class="o">](</span>
+    <span class="n">get</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=&gt;</span> <span class="n">B</span><span class="o">,</span>
+    <span class="n">set</span><span class="k">:</span> <span class="o">(</span><span class="kt">A</span><span class="o">,</span> <span class="kt">B</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">A</span>
+<span class="o">)</span>
+</code></pre></div></div>
+
+<p>In a less formal way, we can then describe the Lens as a group of functions, set and get, that allows us to manipulate data inside a class.</p>
+
+<p>We have now a data structure that allows us to easily update the street number:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="n">streetNumberLens</span> <span class="k">=</span> <span class="nc">Lens</span><span class="o">[</span><span class="kt">Street</span>, <span class="kt">Int</span><span class="o">](</span>
+  <span class="n">get</span> <span class="k">=</span> <span class="k">_</span><span class="o">.</span><span class="n">number</span><span class="o">,</span>
+  <span class="n">set</span> <span class="k">=</span> <span class="o">(</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">a</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span><span class="n">number</span> <span class="k">=</span> <span class="n">b</span><span class="o">)</span>
+<span class="o">)</span>
+
+<span class="k">val</span> <span class="n">bigStreet</span> <span class="k">=</span> <span class="nc">Street</span><span class="o">(</span><span class="s">"Unter den Linden"</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+
+<span class="n">streetNumberLens</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">bigStreet</span><span class="o">)</span>
+<span class="c1">//res0: Int = 3
+</span>
+<span class="n">streetNumberLens</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="n">bigStreet</span><span class="o">,</span> <span class="mi">9</span><span class="o">)</span>
+<span class="c1">//res1: Street = Street(Unter den Linden,9)
+</span></code></pre></div></div>
+
+<p>So far so good, but besides giving us a better syntax and a more functional way to get and set a value in a case class, Lenses don’t seem to provide much.</p>
+
+<p>Where is then the advantage of using a Lens in place of a nested copy function, if every time we have to create a new Lens? Here is the thing: we don’t have to.</p>
+
+<p>Debasish Ghosh, in in the book Functional And Reactive Domain Modeling, defined a compose function that allows us to put together Lenses and reuse code:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="n">compose</span><span class="o">[</span><span class="kt">Outer</span>, <span class="kt">Inner</span>, <span class="kt">Value</span><span class="o">](</span>
+    <span class="n">outer</span><span class="k">:</span> <span class="kt">Lens</span><span class="o">[</span><span class="kt">Outer</span>, <span class="kt">Inner</span><span class="o">],</span>
+    <span class="n">inner</span><span class="k">:</span> <span class="kt">Lens</span><span class="o">[</span><span class="kt">Inner</span>, <span class="kt">Value</span><span class="o">]</span>
+<span class="o">)</span> <span class="k">=</span> <span class="nc">Lens</span><span class="o">[</span><span class="kt">Outer</span>, <span class="kt">Value</span><span class="o">](</span>
+  <span class="n">get</span> <span class="k">=</span> <span class="n">outer</span><span class="o">.</span><span class="n">get</span> <span class="n">andThen</span> <span class="n">inner</span><span class="o">.</span><span class="n">get</span><span class="o">,</span>
+  <span class="n">set</span> <span class="k">=</span> <span class="o">(</span><span class="n">obj</span><span class="o">,</span> <span class="n">value</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">outer</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="n">obj</span><span class="o">,</span> <span class="n">inner</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="n">outer</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">obj</span><span class="o">),</span> <span class="n">value</span><span class="o">))</span>
+<span class="o">)</span>
+</code></pre></div></div>
+
+<p>This is a powerful feature that allows us to create new Lenses from existing ones in a modular way.</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="n">addressStreetLens</span> <span class="k">=</span> <span class="nc">Lens</span><span class="o">[</span><span class="kt">Address</span>, <span class="kt">Street</span><span class="o">](</span>
+  <span class="n">get</span> <span class="k">=</span> <span class="k">_</span><span class="o">.</span><span class="n">street</span><span class="o">,</span>
+  <span class="n">set</span> <span class="k">=</span> <span class="o">(</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">a</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span><span class="n">street</span> <span class="k">=</span> <span class="n">b</span><span class="o">)</span>
+<span class="o">)</span>
+
+<span class="k">val</span> <span class="n">addressStreetNumberLens</span><span class="k">:</span> <span class="kt">Lens</span><span class="o">[</span><span class="kt">Address</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="n">compose</span><span class="o">(</span><span class="n">addressStreetLens</span><span class="o">,</span> <span class="n">streetNumberLens</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p>So basically we can imagine that a Lens is like an instance of a function — or to be more accurate it’s an instance of a profunctor, a generalization of function.</p>
+
+<p>In the Profunctor Optics Modular Data Accessors paper is indeed introduced in this way:</p>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">Any</span> <span class="n">data</span> <span class="n">accessor</span> <span class="k">for</span> <span class="n">a</span> <span class="n">component</span> <span class="n">of</span> <span class="n">a</span> <span class="n">data</span> <span class="n">structure</span> <span class="n">is</span> <span class="err">‘</span><span class="n">function</span><span class="o">-</span><span class="n">like</span><span class="err">’</span><span class="o">,</span> <span class="n">in</span> <span class="n">the</span> <span class="n">sense</span> <span class="n">that</span> <span class="n">reading</span> <span class="err">‘</span><span class="n">consumes</span><span class="err">’</span> <span class="n">the</span> <span class="n">component</span> <span class="n">from</span> <span class="n">the</span> <span class="n">data</span> <span class="n">structure</span> <span class="n">and</span> <span class="n">writing</span> <span class="err">‘</span><span class="n">produces</span><span class="err">’</span> <span class="n">an</span> <span class="n">updated</span> <span class="n">component</span> <span class="n">to</span> <span class="n">put</span> <span class="n">back</span> <span class="n">into</span> <span class="n">the</span> <span class="n">data</span> <span class="n">structure</span><span class="o">.</span> <span class="nc">The</span> <span class="k">type</span> <span class="kt">structure</span> <span class="kt">of</span> <span class="kt">such</span> <span class="kt">function-like</span> <span class="kt">things</span><span class="err"> — </span><span class="kt">henceforth</span> <span class="kt">transformers</span><span class="err"> — </span><span class="kt">is</span> <span class="kt">technically</span> <span class="kt">known</span> <span class="kt">as</span> <span class="kt">a</span> <span class="kt">profunctor.</span>
+</code></pre></div></div>
+<p>In a notation that is not 100% accurate we could say that <code class="highlighter-rouge">Lens[A,B] ~ A =&gt; B</code> composed with this other <code class="highlighter-rouge">Lens[B,C] ~ B =&gt; C</code> gives <code class="highlighter-rouge">Lens[A,C] ~ A =&gt; C</code>.</p>
+
+<h2 id="lens-laws">Lens Laws</h2>
+
+<p>A Lens is expected to satisfy general laws:</p>
+
+<ul>
+  <li>Identity — If you get and then set back with the same value, the object remains identical:</li>
+</ul>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="k">def</span> <span class="n">getSet</span><span class="o">[</span><span class="kt">S</span>, <span class="kt">A</span><span class="o">](</span><span class="n">lens</span><span class="k">:</span> <span class="kt">Lens</span><span class="o">[</span><span class="kt">S</span>, <span class="kt">A</span><span class="o">],</span> <span class="n">s</span><span class="k">:</span> <span class="kt">S</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+  <span class="n">lens</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="n">s</span><span class="o">,</span> <span class="n">lens</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">s</span><span class="o">))</span> <span class="o">==</span> <span class="n">s</span>
+</code></pre></div></div>
+
+<ul>
+  <li>Retention — If you set with a value and then perform a get, you get the same value back:</li>
+</ul>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="k">def</span> <span class="n">setGet</span><span class="o">[</span><span class="kt">S</span>, <span class="kt">A</span><span class="o">](</span><span class="n">lens</span><span class="k">:</span> <span class="kt">Lens</span><span class="o">[</span><span class="kt">S</span>, <span class="kt">A</span><span class="o">],</span> <span class="n">s</span><span class="k">:</span> <span class="kt">S</span><span class="o">,</span> <span class="n">a</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+  <span class="n">lens</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">lens</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="n">s</span><span class="o">,</span> <span class="n">a</span><span class="o">))</span> <span class="o">==</span> <span class="n">a</span>
+</code></pre></div></div>
+<ul>
+  <li>Double set — If you set twice in succession and then perform a get, you get back the last set value:</li>
+</ul>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="n">putPut</span><span class="o">[</span><span class="kt">S</span>, <span class="kt">A</span><span class="o">](</span><span class="n">lens</span><span class="k">:</span> <span class="kt">Lens</span><span class="o">[</span><span class="kt">S</span>, <span class="kt">A</span><span class="o">],</span> <span class="n">s</span><span class="k">:</span> <span class="kt">S</span><span class="o">,</span> <span class="n">a</span><span class="k">:</span> <span class="kt">A</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+  <span class="n">lens</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">lens</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="n">lens</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="n">s</span><span class="o">,</span> <span class="n">a</span><span class="o">),</span> <span class="n">b</span><span class="o">))</span> <span class="o">==</span> <span class="n">b</span>
+</code></pre></div></div>
+<h2 id="beyond-lenses-optics">Beyond Lenses: Optics</h2>
+
+<p>Lenses are not the only functional references we can think of. Generalizations of Lenses are called Optics.</p>
+
+<p>As described in the Monocle documentation — where Monocle is a Scala library for Optics:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Optics are a group of purely functional abstractions to manipulate (get, set, modify, …) immutable objects.
+</code></pre></div></div>
+
+<p>What if we want to manipulate data inside a trait , in general referred as a sum type or coproduct? Prisms come in handy. They’re like Lenses but for sum types.</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">//this is a simplification of Prism
+</span><span class="k">case</span> <span class="k">class</span> <span class="nc">Prism</span><span class="o">[</span><span class="kt">S</span>, <span class="kt">A</span><span class="o">](</span><span class="nc">_getOption</span><span class="k">:</span> <span class="kt">S</span> <span class="o">=&gt;</span> <span class="nc">Option</span><span class="o">[</span><span class="kt">A</span><span class="o">])(</span><span class="nc">_reverseGet</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=&gt;</span> <span class="n">S</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">getOption</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">S</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span> <span class="k">=</span> <span class="nc">_getOption</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+  <span class="k">def</span> <span class="n">reverseGet</span><span class="o">(</span><span class="n">a</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">S</span> <span class="o">=</span> <span class="nc">_reverseGet</span><span class="o">(</span><span class="n">a</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="k">val</span> <span class="n">petPrism</span> <span class="k">=</span> <span class="nc">Prism</span><span class="o">[</span><span class="kt">Pet</span>, <span class="kt">String</span><span class="o">]{</span>
+  <span class="k">case</span> <span class="nc">Dog</span><span class="o">(</span><span class="n">n</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Some</span><span class="o">(</span><span class="n">n</span><span class="o">)</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="nc">None</span>
+<span class="o">}(</span><span class="n">name</span> <span class="k">=&gt;</span> <span class="nc">Dog</span><span class="o">(</span><span class="n">name</span><span class="o">))</span>
+
+<span class="n">petPrism</span><span class="o">.</span><span class="n">getOption</span><span class="o">(</span><span class="nc">Dog</span><span class="o">(</span><span class="s">"Santa's Little Helper"</span><span class="o">))</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Santa</span><span class="ss">'s </span><span class="nc">Little</span> <span class="nc">Helper</span><span class="o">)</span>
+
+<span class="n">petPrism</span><span class="o">.</span><span class="n">reverseGet</span><span class="o">(</span><span class="s">"Santa's Little Helper"</span><span class="o">)</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">Pet</span> <span class="o">=</span> <span class="nc">Dog</span><span class="o">(</span><span class="nc">Santa</span><span class="ss">'s </span><span class="nc">Little</span> <span class="nc">Helper</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p>There is a generalization of Prism in case the object of type A may not exist, it’s called Optional.</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">//this is a simplification of Optional
+</span><span class="k">case</span> <span class="k">class</span> <span class="nc">Optional</span><span class="o">[</span><span class="kt">S</span>, <span class="kt">A</span><span class="o">](</span><span class="nc">_getOption</span><span class="k">:</span> <span class="kt">S</span> <span class="o">=&gt;</span> <span class="nc">Option</span><span class="o">[</span><span class="kt">A</span><span class="o">])(</span><span class="nc">_set</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=&gt;</span> <span class="n">S</span> <span class="k">=&gt;</span> <span class="n">S</span><span class="o">){</span>
+  <span class="k">def</span> <span class="n">getOption</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">S</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span> <span class="k">=</span> <span class="nc">_getOption</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+  <span class="k">def</span> <span class="n">set</span><span class="o">(</span><span class="n">a</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">S</span> <span class="o">=&gt;</span> <span class="n">S</span> <span class="k">=</span> <span class="nc">_set</span><span class="o">(</span><span class="n">a</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Box</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Present</span><span class="o">(</span><span class="n">quantity</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Box</span>
+<span class="k">case</span> <span class="k">object</span> <span class="nc">NoPresent</span> <span class="k">extends</span> <span class="nc">Box</span>
+
+<span class="k">val</span> <span class="n">maybePresents</span> <span class="k">=</span> <span class="nc">Optional</span><span class="o">[</span><span class="kt">Box</span>, <span class="kt">Int</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="n">present</span><span class="k">:</span> <span class="kt">Present</span> <span class="o">=&gt;</span> <span class="nc">Some</span><span class="o">(</span><span class="n">present</span><span class="o">.</span><span class="n">quantity</span><span class="o">)</span>
+  <span class="k">case</span> <span class="k">_</span>                <span class="k">=&gt;</span> <span class="nc">None</span>
+<span class="o">}</span> <span class="o">{</span> <span class="n">numberOfPresents</span> <span class="k">=&gt;</span> <span class="n">box</span> <span class="k">=&gt;</span>
+  <span class="n">box</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">present</span><span class="k">:</span> <span class="kt">Present</span> <span class="o">=&gt;</span> <span class="n">present</span><span class="o">.</span><span class="n">copy</span><span class="o">(</span><span class="n">quantity</span> <span class="k">=</span> <span class="n">numberOfPresents</span><span class="o">)</span>
+    <span class="k">case</span> <span class="k">_</span>                <span class="k">=&gt;</span> <span class="n">box</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="n">maybePresents</span><span class="o">.</span><span class="n">getOption</span><span class="o">(</span><span class="nc">Present</span><span class="o">(</span><span class="mi">3</span><span class="o">))</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="mi">3</span><span class="o">)</span>
+
+<span class="n">maybePresents</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="mi">9</span><span class="o">)</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">Box</span> <span class="o">=&gt;</span> <span class="nc">Box</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function</span><span class="o">&gt;</span>
+</code></pre></div></div>
+
+<p>Unlike Prism when using set on Optional we lose information: we don’t have enough information to go back to S without additional argument.</p>
+
+<p>We could go a step further and extend the logic behind Optional to traversable datatypes, such as List or Tree : in this case we would need an optic called Traversal. More on how a Traversal works can be found here.</p>
+
+<h2 id="when-to-use-optics">When to use Optics?</h2>
+
+<p>We’ve already seen that one possible use case would be in case of deeply nested objects. Another interesting use case is when you have to work with different representations of essentially the same data. circe-optics is based on this principle. More in general they would prove very useful in Parsers implementations.</p>
+
+<p>The composition with the State Monad when updating to a new state would be another application of Optics.</p>
+
+<p>Optics are a powerful instrument in the “Functional Programming Toolbox”, but they’re not always necessary. One thing is sure: the ability to compose optics gives us flexibility and expressiveness to traverse and update complex objects.</p>
+
+<h2 id="note">Note</h2>
+
+<p>You can find the code mentioned above in <a href="https://gist.github.com/alodavi/89d09435872ee629cc5d6a56e4bb81bb">this gist</a>.</p>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="http://julien-truffaut.github.io/Monocle/">Monocle documentation</a></li>
+  <li><a href="https://arxiv.org/ftp/arxiv/papers/1703/1703.10857.pdf">Profunctor Optics Modular Data Accessors</a> paper by Matthew Pickering, Jeremy Gibbons and Nicolas Wu</li>
+  <li><a href="https://blog.scalac.io/optics-beyond-lenses-with-monocle.html">Optics beyond Lenses with Monocle blog post</a> by Michał Sitko</li>
+  <li><a href="https://www.schoolofhaskell.com/school/to-infinity-and-beyond/pick-of-the-week/a-little-lens-starter-tutorial">A Little Lens Starter Tutorial</a> by Joseph Abrahamson — School of Haskell</li>
+  <li><a href="https://www.slideshare.net/knoldus/scala-lens-an-introduction">Scala Lens: An Introduction</a> presentation by Seth Tissue</li>
+  <li><a href="https://www.manning.com/books/functional-and-reactive-domain-modeling">Functional and Reactive Domain Modeling</a> by Debasish Ghosh</li>
+  <li><a href="https://www.scala-exercises.org/monocle/lens">Scala Exercises page</a></li>
+</ul>
+
+<p>From this <a href="https://medium.com/zyseme-technology/functional-references-lens-and-other-optics-in-scala-e5f7e2fdafe">article</a> originally posted through <a href="https://medium.com/zyseme-technology">ZyseMe</a>.</p>
+
+    </div>
+    <br><br>
+
+  </div>
+</div>
+
+    <footer class="page-footer grey darken-3">
+  <div class="container">
+    <div class="row center-align">
+      <a href="https://twitter.com/dorian_codes"><i class="fa fa-twitter fa-3x icon-block yellow-text text-lighten-3" aria-hidden="true"></i></a>
+      <a href="https://github.com/doriancodes"><i class="fa fa-github fa-3x icon-block yellow-text text-lighten-3" aria-hidden="true"></i></a>
+      <a href="https://www.linkedin.com/in/doriancodes/"><i class="fa fa-linkedin fa-3x icon-block yellow-text text-lighten-3" aria-hidden="true"></i></a>
+      <a href="https://medium.com/@dorian.codes"><i class="fa fa-medium fa-3x icon-block yellow-text text-lighten-3" aria-hidden="true"></i></a>
+      <a href="hello@alo.codes"><i class="fa fa-at fa-3x icon-block yellow-text text-lighten-3" aria-hidden="true"></i></a>
+    </div>
+  </div>
+  <div class="footer-copyright">
+    <div class="container">
+    Made with <a class="yellow-text text-lighten-3" href="http://materializecss.com">Materialize</a>
+    </div>
+  </div>
+</footer>
+
+  </body>
+  <!--  Scripts-->
+  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="assets/js/materialize.js"></script>
+  <script src="assets/js/init.js"></script>
+</html>

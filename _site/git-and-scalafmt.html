@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+   <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
+  <meta charset="utf-8">
+  <title>Code formatting: scalafmt and the git pre-commit hook</title>
+
+  <!-- CSS  -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="assets/css/materialize.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+  <link href="assets/css/style.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+  <link rel="stylesheet" href="assets/font-awesome/css/font-awesome.min.css">
+
+  <!-- Code highlighting -->
+  <link rel="stylesheet" href="/assets/highlight/styles/rainbow.css">
+  <script src="/assets/highlight/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+</head>
+
+  <body>
+    <nav class="yellow lighten-3" role="navigation">
+  <div class="nav-wrapper container"><a id="logo-container" href="/" class="brand-logo grey-text text-darken-3">Dorian Davì</a>
+    <ul class="right hide-on-med-and-down">
+      <li><a href="/" class="grey-text text-darken-3">Home</a></li>
+      <li><a href="/blog.html" class="grey-text text-darken-3">Blog</a></li>
+      <li><a href="/about.html" class="grey-text text-darken-3">About</a></li>
+    </ul>
+
+    <ul id="nav-mobile" class="sidenav deep-purple darken-1">
+      <li><a href="/" class="white-text">Home</a></li>
+      <li><a href="/blog.html" class="white-text">Blog</a></li>
+      <li><a href="/about.html" class="white-text">About</a></li>
+    </ul>
+    <a href="#" data-target="nav-mobile" class="sidenav-trigger"><i class="material-icons grey-text text-darken-3">menu</i></a>
+  </div>
+</nav>
+
+    <div class="section no-pad-bot" id="index-banner">
+  <div class="container">
+    <br><br>
+    <h3 class="header center deep-purple-text text-darken-1">Code formatting: scalafmt and the git pre-commit hook</h3>
+    <p>20 Sep 2018</p>
+    <div class="row grey-text text-darken-3">
+    <p>When working in a team it is often useful to have a style guide. Why? Because for instance everyone has a particular coding style or formatting preferences. This leads either to a lack of consistency in the style of the whole project or to almost irrelevant discussions when it comes to review the code of another person.</p>
+
+<p>That’s why formatting tools, like the one that we are using at ZyseMe, scalafmt, can boost the productivity of a team and allow developers to focus on problems that matter and are fun to solve.
+What’s scalafmt</p>
+
+<p>scalafmt is a code formatter for Scala. It can be run from the command line or as sbt task — making sure that your project has the right plugin. There is even an Intellij plugin.</p>
+
+<p>It comes with a standard configuration that can be changed simply by adding a .scalafmt.conf file in the root directory of your project. All you need to do is decide the rules you want scalafmt to apply to your code and then — in case you installed the scalafmt cli — run</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>scalafmt
+</code></pre></div></div>
+
+<p>And this is how scalafmt automatically formats your project for you.</p>
+
+<h2 id="whats-a-pre-commit-hook">What’s a pre-commit hook</h2>
+
+<p>In the git Version Control System hooks are actions that are executed by git when particular events occur. When running <code class="highlighter-rouge">git init</code>, a directory containing the hooks is created in the <code class="highlighter-rouge">.git</code> hidden folder. By default the scripts in <code class="highlighter-rouge">./git/hooks</code> are not active and end with <code class="highlighter-rouge">.sample</code>. They can be activated by changing their ending to correspond to a script format — usually it is a shell script but it can be also python, ruby, perl etc…</p>
+
+<p>A <code class="highlighter-rouge">pre-commit hook</code> in particular is a special command that is executed before committing. More information can be found in the <a href="https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks">git documentation</a>.</p>
+
+<h2 id="how-to-set-a-scalafmt-git-pre-commit-hook-for-your-project">How to set a scalafmt git pre-commit hook for your project</h2>
+
+<p>The goal of this <code class="highlighter-rouge">pre-commit</code> hook is:</p>
+
+<ul>
+  <li>To check compilation</li>
+  <li>To check formatting</li>
+</ul>
+
+<p>If one of the two is failing, git doesn’t allow to commit.</p>
+
+<p>In the root directory of the project you should create a <code class="highlighter-rouge">hook</code> folder that has the following structure:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>.
+└── hook
+    ├── README.md
+    ├── pre-commit-hook-install.sh
+    └── pre-commit-hook.sh
+</code></pre></div></div>
+
+<p>Where <code class="highlighter-rouge">pre-commit-hook.sh</code> is the script that contains the instructions for the hook itself, <code class="highlighter-rouge">pre-commit-hook-install.sh</code> manages the local installation of the hook and the <code class="highlighter-rouge">README.md</code> contains the relative documentation.</p>
+
+<h3 id="step-1-create-a-script-to-install-the-pre-commit-hook-on-your-local-git-folder">Step 1: create a script to install the pre-commit hook on your local git folder</h3>
+
+<p>By design hooks can only be installed locally, so if you want everybody on the team to be able to use and edit it, you need a script that sets up everything automatically.</p>
+
+<p>First you have to ensure that the scalafmt cli is installed:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>brew install --HEAD olafurpg/scalafmt/scalafmt
+</code></pre></div></div>
+
+<p>In case you’re not a mac user follow the <a href="https://scalameta.org/scalafmt/docs/installation.html">instructions in the scalafmt documentation</a>.</p>
+
+<p>Then you have to create a link and copy paste the code in <code class="highlighter-rouge">project-root/hook/pre-commit-hook.sh</code> to <code class="highlighter-rouge">.git/hooks/pre-commit-hook.sh</code>:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>#create the file if not exist
+touch ../.git/hooks/pre-commit
+
+#delete the file
+rm ../.git/hooks/pre-commit
+
+#create a file link
+ln -s pre-commit-hook.sh ../.git/hooks/pre-commit
+
+#copy paste the code in the hook folder
+cp pre-commit-hook.sh ../.git/hooks/pre-commit-hook.sh
+</code></pre></div></div>
+
+<h3 id="step-2-create-the-pre-commit-hook-script">Step 2: create the pre-commit-hook script</h3>
+
+<p>I got some help from this gist to create the pre-commit-hook script. Moreover I used color codes for better readability. Each code has a meaning:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>#COLOR CODES:
+#tput setaf 3 = yellow -&gt; Info
+#tput setaf 1 = red -&gt; warning/not allowed commit
+#tput setaf 2 = green -&gt; all good!/allowed commit
+</code></pre></div></div>
+
+<p>The script is roughly divided in 5 parts:</p>
+
+<h4 id="checking-for-non-staged-changes">checking for non staged changes:</h4>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git diff --quiet
+hadNoNonStagedChanges=$?
+
+if ! [ $hadNoNonStagedChanges -eq 0 ]
+then
+    echo "* Stashing non-staged changes"
+    git stash --keep-index -u &gt; /dev/null
+fi
+</code></pre></div></div>
+
+<h4 id="checking-for-compilation">checking for compilation:</h4>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(cd $DIR/; sbt test:compile)
+compiles=$?
+
+echo "* Compiles?"
+
+if [ $compiles -eq 0 ]
+then
+    echo "* Yes"
+else
+    echo "* No"
+fi
+</code></pre></div></div>
+
+<h4 id="checking-for-formatting">checking for formatting:</h4>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(cd $DIR/; scalafmt)
+git diff --quiet
+formatted=$?
+
+echo "* Properly formatted?"
+
+if [ $formatted -eq 0 ]
+then
+    echo "* Yes"
+else
+    echo "* No"
+    echo "The following files need formatting (in stage or commited):"
+    git diff --name-only
+    echo ""
+    echo "Please run 'scalafmt' to format the code."
+    echo ""
+fi
+</code></pre></div></div>
+
+<h4 id="undoing-formatting">undoing formatting:</h4>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git stash --keep-index &gt; /dev/null
+git stash drop &gt; /dev/null
+</code></pre></div></div>
+
+<p>Keep in mind that the goal of the pre-commit hook is not to format the code in your place, but to check if the code is properly formatted.</p>
+
+<h4 id="taking-action-basing-on-the-results-of-the-previous-operations">taking action basing on the results of the previous operations:</h4>
+
+<h5 id="1-if-there-are-not-staged-changes-stash-them">1. if there are not staged changes, stash them:</h5>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>if ! [ $hadNoNonStagedChanges -eq 0 ]
+then
+    echo "* Scheduling stash pop of previously stashed non-staged changes for 1 second after commit."
+    sleep 1 &amp;&amp; git stash pop --index &gt; /dev/null &amp; # sleep and &amp; otherwise commit fails when this leads to a merge conflict
+fi
+</code></pre></div></div>
+
+<h5 id="2-if-the-code-compiles-and-is-properly-formatted-end-program-with-no-errors">2. if the code compiles and is properly formatted end program with no errors</h5>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>if [ $compiles -eq 0 ] &amp;&amp; [ $formatted -eq 0 ]
+then
+    echo "... done. Proceeding with commit."
+    echo ""
+    exit 0
+</code></pre></div></div>
+
+<h5 id="3-if-the-code-compiles-but-is-not-formatted-end-program-with-error">3. if the code compiles but is not formatted end program with error:</h5>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>elif [ $compiles -eq 0 ]
+then
+    echo "... done."
+    echo "CANCELLING commit due to NON-FORMATTED CODE."
+    echo ""
+    exit 1
+</code></pre></div></div>
+
+<h5 id="4-if-the-code-doesnt-compile-end-the-program-with-error">4. if the code doesn’t compile end the program with error:</h5>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>else
+    echo "... done."
+    echo "CANCELLING commit due to COMPILE ERROR."
+    echo ""
+    exit 2
+fi
+</code></pre></div></div>
+
+<p>Putting everything together and adding the color codes according to the different situations the <a href="https://gist.github.com/alodavi/c42da82b888869bf935242b1160e05b7#file-pre-commit-hook-install-sh">final scripts can be derived</a>.</p>
+
+<p>In case the code compiles and is properly formatted, before committing you should see something like this:</p>
+
+<p><img class="responsive-img" src="/assets/img/2018/pre-commit-hook.png" /></p>
+
+<h3 id="step-3-set-up-the-hook">Step 3: Set up the hook</h3>
+
+<p>Having the scripts in your project-root/hook folder per se doesn’t make the pre-commit hook effective. You need to give execute permission to the pre-commit-hook-install script:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>chmod +x pre-commit-hook-install.sh
+</code></pre></div></div>
+
+<p>Then run the install script:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./pre-commit-hook-install.sh
+</code></pre></div></div>
+
+<p>This will create a link with your local .git/hooks folder. If you now go there you will see that there are two new files: pre-commit and pre-commit-hook.sh As default bash files are not executable, so you will need to give them permission to execute with the chmod command.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>chmod +x pre-commit
+chmod +x pre-commit-hook.sh
+</code></pre></div></div>
+
+<p>Now your pre-commit hook should be active.</p>
+
+<p>Please keep in mind that you need to have homebrew installed on your local machine to allow the pre-commit-hook-install.sh to install the scalafmt cli locally.</p>
+
+<h4 id="what-to-do-if-the-code-is-not-correctly-formatted">What to do if the code is not correctly formatted?</h4>
+
+<p>Just run:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>scalafmt
+</code></pre></div></div>
+
+<p>add the changes and try to commit again.</p>
+
+<h4 id="what-if-you-want-to-commit-not-formatted-code">What if you want to commit not formatted code?</h4>
+
+<p>you can still do it running the command:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git commit -m "your commit message here" --no-verify
+</code></pre></div></div>
+
+<p>Now that you’re all set, you should instruct your project collaborators on how to set up the pre-commit hook so that the whole team has the same workflow. Ideally you should document such process in a written form — like the README.md file.</p>
+
+<h2 id="updating-the-git-pre-commit-hook">Updating the git pre-commit hook</h2>
+
+<p>Changes to the pre-commit hook script aren’t automatically installed locally. Indeed every time you change something you need to run the command again to make your changes effective:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>.\pre-commit-hook-install.sh
+</code></pre></div></div>
+
+<p>After you’ve successfully updated the script, remember to:</p>
+
+<ul>
+  <li>make your project collaborators aware of the changes, so that they can update their local pre-commit-hook as well.</li>
+  <li>update the README file.</li>
+</ul>
+
+<h2 id="conclusions">Conclusions</h2>
+
+<p>Using this solution at ZyseMe has made the development workflow smoother and improved the developer experience. Now the code looks better and more consistent with the styling rules we have established.</p>
+
+<p>Overall, we have more control over our code style and avoid overthinking it.</p>
+
+<p>I hope this article will help you to reach the same level of satisfaction. Happy committing!</p>
+
+<p>From this <a href="https://medium.com/zyseme-technology/code-formatting-scalafmt-and-the-git-pre-commit-hook-3de71d099514">article</a> originally posted through <a href="https://medium.com/zyseme-technology">ZyseMe</a>.</p>
+
+    </div>
+    <br><br>
+
+  </div>
+</div>
+
+    <footer class="page-footer grey darken-3">
+  <div class="container">
+    <div class="row center-align">
+      <a href="https://twitter.com/dorian_codes"><i class="fa fa-twitter fa-3x icon-block yellow-text text-lighten-3" aria-hidden="true"></i></a>
+      <a href="https://github.com/doriancodes"><i class="fa fa-github fa-3x icon-block yellow-text text-lighten-3" aria-hidden="true"></i></a>
+      <a href="https://www.linkedin.com/in/doriancodes/"><i class="fa fa-linkedin fa-3x icon-block yellow-text text-lighten-3" aria-hidden="true"></i></a>
+      <a href="https://medium.com/@dorian.codes"><i class="fa fa-medium fa-3x icon-block yellow-text text-lighten-3" aria-hidden="true"></i></a>
+      <a href="hello@alo.codes"><i class="fa fa-at fa-3x icon-block yellow-text text-lighten-3" aria-hidden="true"></i></a>
+    </div>
+  </div>
+  <div class="footer-copyright">
+    <div class="container">
+    Made with <a class="yellow-text text-lighten-3" href="http://materializecss.com">Materialize</a>
+    </div>
+  </div>
+</footer>
+
+  </body>
+  <!--  Scripts-->
+  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="assets/js/materialize.js"></script>
+  <script src="assets/js/init.js"></script>
+</html>

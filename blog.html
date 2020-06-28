@@ -1,0 +1,23 @@
+---
+layout: default
+title: Blog
+---
+<div class="section no-pad-bot" id="index-banner">
+  <div class="container">
+    <br><br>
+    <h3 class="header center deep-purple-text text-darken-1">Latest Posts</h3>
+    <div class="row">
+    <ul>
+      {% for post in site.posts %}
+        <li>
+          <h5><a class="grey-text text-darken-3" href="{{ post.url }}">{{ post.title }}</a></h5>
+          <p class="grey-text text-darken-3 flow-text">{{ post.excerpt }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+    </div>
+
+    <br><br>
+
+  </div>
+</div>

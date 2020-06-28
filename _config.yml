@@ -1,0 +1,16 @@
+title: "Alo Davì"
+description: "Software Engineer"
+url: https://www.alo.codes/
+
+lang: it_IT
+
+permalink: /:title:output_ext
+
+exclude:
+         - vendor
+         - Gemfile
+         - Gemfile.lock
+         - node_modules
+         - gulpfile.js
+         - package.json
+         - README.md
